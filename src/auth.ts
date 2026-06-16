@@ -6,6 +6,14 @@ export const auth = betterAuth({
   database: kyselyAdapter(db),
 
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:5000',
+  advanced: {
+    useSecureCookies: true,
+    defaultCookieAttributes: {
+      sameSite: 'none',
+      secure: true,
+      httpOnly: true,
+    },
+  },
 
   emailAndPassword: {
     enabled: true,
