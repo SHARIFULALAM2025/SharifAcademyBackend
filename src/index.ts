@@ -27,6 +27,15 @@ app.use(
 
 app.all('/api/auth/{*any}', toNodeHandler(auth))
 app.use(express.json())
+app.get('/test-db', async (req, res) => {
+  try {
+    await db.selectFrom('questions').selectAll().limit(1).execute()
+    await db.selectFrom('question_reactions').selectAll().limit(1).execute()
+    res.json({ success: true, message: 'DB connected, tables ok!' })
+  } catch (error) {
+    res.status(500).json({ success: false, error: String(error) })
+  }
+})
 
 // ✅ 👍 Like Route
 app.post('/api/questions/:id/like', async (req, res) => {
