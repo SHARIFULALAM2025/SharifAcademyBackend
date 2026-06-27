@@ -267,13 +267,13 @@ app.post('/api/exams/submit', async (req, res) => {
 })
 app.get('/api/exam/result/:resultId', async (req, res) => {
   try {
-    const userId = (req.headers['user-id'] as string) ?? 'anonymous'
+
 
     const result = await db
       .selectFrom('exam_submissions')
       .selectAll()
       .where('id', '=', req.params.resultId)
-      .where('user_id', '=', userId)
+      
       .executeTakeFirst()
 
     if (!result) {
