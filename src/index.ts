@@ -265,7 +265,27 @@ app.post('/api/exams/submit', async (req, res) => {
     res.status(500).json({ success: false, error: String(error) })
   }
 })
+app.get('/api/exams/result/:resultId', async (req, res) => {
+  try {
+    const userId = (req.headers['user-id'] as string) ?? 'anonymous'
 
+    const result = await db
+      .selectFrom('exam_submissions')
+      .selectAll()
+      .where('id', '=', req.params.resultId)
+      .where('user_id', '=', userId)
+      .executeTakeFirst()
+
+    if (!result) {
+      return res.status(404).json({ error: 'Result not found' })
+    }
+
+    res.json({ success: true, data: result })
+  } catch (error) {
+    console.error('❌ Result fetch error:', error)
+    res.status(500).json({ success: false, error: String(error) })
+  }
+})
 app.listen(5000, () => {
   console.log('Server running on http://localhost:5000')
 })
