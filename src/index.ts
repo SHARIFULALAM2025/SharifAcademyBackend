@@ -6,7 +6,7 @@ import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import dotenv from 'dotenv'
 import { db } from './db'
-
+import answerKey from './data/answer-key.json' // ✅ শুধু answer-key
 dotenv.config()
 
 const app = express()
@@ -24,9 +24,9 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization', 'user-id'],
   })
 )
-
-app.all('/api/auth/{*any}', toNodeHandler(auth))
 app.use(express.json())
+app.all('/api/auth/{*any}', toNodeHandler(auth))
+
 app.get('/test-db', async (req, res) => {
   try {
     await db.selectFrom('questions').selectAll().limit(1).execute()
@@ -209,6 +209,59 @@ app.post('/api/questions/:id/view', async (req, res) => {
 
     res.json({ success: true })
   } catch (error) {
+    res.status(500).json({ success: false, error: String(error) })
+  }
+})
+
+
+
+
+
+
+app.post('/api/exams/submit', async (req, res) => {
+  try {
+    const userId = (req.headers['user-id'] as string) ?? 'anonymous'
+    const { examId, submittedAnswers, timeTaken, autoSubmitted } = req.body
+
+    // ✅ শুধু answer-key থেকে সঠিক উত্তর নিন
+    const examAnswers = (answerKey as any)[String(examId)]
+
+    if (!examAnswers) {
+      return res.status(404).json({ error: 'Answer key not found' })
+    }
+
+    let totalCorrect = 0
+    let totalWrong = 0
+
+    // ✅ frontend থেকে আসা প্রতিটা উত্তর মিলিয়ে দেখুন
+    Object.entries(submittedAnswers).forEach(([questionId, userAnswer]) => {
+      const correctAnswer = examAnswers[questionId]
+      if (!correctAnswer) return
+      if (userAnswer === correctAnswer) totalCorrect++
+      else totalWrong++
+    })
+
+    const score = totalCorrect - totalWrong * 0.25
+    console.log('📊 Score:', { totalCorrect, totalWrong, score })
+
+    const result = await db
+      .insertInto('exam_submissions')
+      .values({
+        user_id: userId,
+        exam_id: Number(examId),
+        answers: JSON.stringify(submittedAnswers),
+        score,
+        total_correct: totalCorrect,
+        total_wrong: totalWrong,
+        time_taken: timeTaken,
+        is_auto_submitted: autoSubmitted ?? false,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+
+    res.json({ success: true, resultId: result.id, score })
+  } catch (error) {
+    console.error('❌ Full error:', error)
     res.status(500).json({ success: false, error: String(error) })
   }
 })
