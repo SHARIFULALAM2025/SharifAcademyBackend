@@ -265,7 +265,7 @@ app.post('/api/exams/submit', async (req, res) => {
     res.status(500).json({ success: false, error: String(error) })
   }
 })
-app.get('/api/exams/result/:resultId', async (req, res) => {
+app.get('/api/exam/result/:resultId', async (req, res) => {
   try {
     const userId = (req.headers['user-id'] as string) ?? 'anonymous'
 
