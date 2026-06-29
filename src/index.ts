@@ -223,7 +223,6 @@ app.post('/api/exams/submit', async (req, res) => {
     const userId = (req.headers['user-id'] as string) ?? 'anonymous'
     const { examId, submittedAnswers, timeTaken, autoSubmitted } = req.body
 
-    // ✅ শুধু answer-key থেকে সঠিক উত্তর নিন
     const examAnswers = (answerKey as any)[String(examId)]
 
     if (!examAnswers) {
@@ -233,12 +232,18 @@ app.post('/api/exams/submit', async (req, res) => {
     let totalCorrect = 0
     let totalWrong = 0
 
-    // ✅ frontend থেকে আসা প্রতিটা উত্তর মিলিয়ে দেখুন
     Object.entries(submittedAnswers).forEach(([questionId, userAnswer]) => {
       const correctAnswer = examAnswers[questionId]
-      if (!correctAnswer) return
-      if (userAnswer === correctAnswer) totalCorrect++
-      else totalWrong++
+
+      // ✅ correctAnswer undefined হলে skip
+      if (correctAnswer === undefined || correctAnswer === null) return
+
+      // ✅ type mismatch ঠিক করা — দুটোকেই Number এ convert করে compare
+      if (Number(userAnswer) === Number(correctAnswer)) {
+        totalCorrect++
+      } else {
+        totalWrong++
+      }
     })
 
     const score = totalCorrect - totalWrong * 0.25
@@ -265,22 +270,27 @@ app.post('/api/exams/submit', async (req, res) => {
     res.status(500).json({ success: false, error: String(error) })
   }
 })
+
 app.get('/api/exam/result/:resultId', async (req, res) => {
   try {
-
-
     const result = await db
       .selectFrom('exam_submissions')
       .selectAll()
+      // ✅ Number() বাদ — string হিসেবেই পাঠান (id UUID/string)
       .where('id', '=', req.params.resultId)
-      
       .executeTakeFirst()
 
     if (!result) {
       return res.status(404).json({ error: 'Result not found' })
     }
 
-    res.json({ success: true, data: result })
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        answers: JSON.parse(result.answers as string),
+      },
+    })
   } catch (error) {
     console.error('❌ Result fetch error:', error)
     res.status(500).json({ success: false, error: String(error) })
