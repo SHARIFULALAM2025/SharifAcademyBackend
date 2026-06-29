@@ -269,29 +269,31 @@ app.post('/api/exams/submit', async (req, res) => {
   }
 })
 
-// ✅ GET — ফলাফল দেখা
 app.get('/api/exam/result/:resultId', async (req, res) => {
   try {
     const result = await db
       .selectFrom('exam_submissions')
       .selectAll()
-      .where('id', '=', req.params.resultId) // id = UUID string
+      .where('id', '=', req.params.resultId)
       .executeTakeFirst()
 
     if (!result) {
       return res.status(404).json({ error: 'Result not found' })
     }
 
-    // ✅ এই exam-এর correct answers পাঠান frontend-এ
     const correctAnswers = (answerKey as any)[String(result.exam_id)] ?? {}
+
+    // ✅ answers already object হলে parse করার দরকার নেই
+    const parsedAnswers =
+      typeof result.answers === 'string'
+        ? JSON.parse(result.answers)
+        : result.answers
 
     res.json({
       success: true,
       data: {
         ...result,
-        // ✅ answers string → object
-        answers: JSON.parse(result.answers as string),
-        // ✅ correct index গুলো পাঠাচ্ছি
+        answers: parsedAnswers,
         correctAnswers,
       },
     })
