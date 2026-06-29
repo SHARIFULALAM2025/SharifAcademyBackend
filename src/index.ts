@@ -216,8 +216,6 @@ app.post('/api/questions/:id/view', async (req, res) => {
 
 
 
-
-
 app.post('/api/exams/submit', async (req, res) => {
   try {
     const userId = (req.headers['user-id'] as string) ?? 'anonymous'
@@ -235,10 +233,10 @@ app.post('/api/exams/submit', async (req, res) => {
     Object.entries(submittedAnswers).forEach(([questionId, userAnswer]) => {
       const correctAnswer = examAnswers[questionId]
 
-      // ✅ correctAnswer undefined হলে skip
+      // ✅ undefined/null হলে skip
       if (correctAnswer === undefined || correctAnswer === null) return
 
-      // ✅ type mismatch ঠিক করা — দুটোকেই Number এ convert করে compare
+      // ✅ Number() দিয়ে type mismatch ঠিক করা
       if (Number(userAnswer) === Number(correctAnswer)) {
         totalCorrect++
       } else {
@@ -271,24 +269,30 @@ app.post('/api/exams/submit', async (req, res) => {
   }
 })
 
+// ✅ GET — ফলাফল দেখা
 app.get('/api/exam/result/:resultId', async (req, res) => {
   try {
     const result = await db
       .selectFrom('exam_submissions')
       .selectAll()
-      // ✅ Number() বাদ — string হিসেবেই পাঠান (id UUID/string)
-      .where('id', '=', req.params.resultId)
+      .where('id', '=', req.params.resultId) // id = UUID string
       .executeTakeFirst()
 
     if (!result) {
       return res.status(404).json({ error: 'Result not found' })
     }
 
+    // ✅ এই exam-এর correct answers পাঠান frontend-এ
+    const correctAnswers = (answerKey as any)[String(result.exam_id)] ?? {}
+
     res.json({
       success: true,
       data: {
         ...result,
+        // ✅ answers string → object
         answers: JSON.parse(result.answers as string),
+        // ✅ correct index গুলো পাঠাচ্ছি
+        correctAnswers,
       },
     })
   } catch (error) {
@@ -296,6 +300,7 @@ app.get('/api/exam/result/:resultId', async (req, res) => {
     res.status(500).json({ success: false, error: String(error) })
   }
 })
+
 app.listen(5000, () => {
   console.log('Server running on http://localhost:5000')
 })
